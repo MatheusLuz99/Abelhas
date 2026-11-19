@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#23402a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Abelhas">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>Caderno das abelhas</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#eef2e8;--card:#fff;--ink:#1d2a1a;--mute:#5d6b58;--line:#d5ddcc;--accent:#e0a100;--accent-ink:#2a1f00;--ok:#2f6b3a;--warn:#b4530a;--head:#23402a;--head-ink:#f3f6ee}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141c13;--card:#1e2a1c;--ink:#e8eee2;--mute:#9db095;--line:#31402e;--accent:#f0b400;--accent-ink:#241a00;--ok:#7fcf8b;--warn:#f0a35e;--head:#0f1a10;--head-ink:#e8eee2}}
+:root[data-theme="dark"]{--bg:#141c13;--card:#1e2a1c;--ink:#e8eee2;--mute:#9db095;--line:#31402e;--accent:#f0b400;--accent-ink:#241a00;--ok:#7fcf8b;--warn:#f0a35e;--head:#0f1a10;--head-ink:#e8eee2}
+*,*:before,*:after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Georgia,"Iowan Old Style",serif}
+header{background:var(--head);color:var(--head-ink);padding:20px 16px 18px}
+h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.01em}
+header p{margin:4px 0 0;font:14px/1.4 system-ui,sans-serif;opacity:.8}
+main{max-width:560px;margin:0 auto;padding:16px;font-family:system-ui,sans-serif}
+button,input,textarea{font:inherit;color:inherit}
+.btn{border:0;border-radius:10px;padding:12px 16px;background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer;min-height:44px}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.btn.small{padding:8px 12px;min-height:36px;font-size:14px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.field{display:block;margin:0 0 10px}
+.field span{display:block;font-size:14px;color:var(--mute);margin-bottom:4px}
+input,textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px}
+.name{font:700 20px Georgia,serif;margin:0}
+.sub{color:var(--mute);font-size:14px}
+.badge{font-size:13px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--bg);border:1px solid var(--line);white-space:nowrap}
+.alert{margin:12px 0 0;padding:10px 12px;border-radius:10px;background:var(--bg);border-left:5px solid var(--accent);font-size:15px}
+.alert.late{border-color:var(--warn)}
+.alert.done{border-color:var(--ok)}
+.steps{list-style:none;margin:12px 0 0;padding:0}
+.steps li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);flex:none}
+.on .dot{background:var(--ok);border-color:var(--ok)}
+.steps .lbl{flex:1}
+.steps .lbl b{display:block;font-weight:600}
+.steps .lbl small{color:var(--mute)}
+.steps input[type=date]{width:auto;padding:6px}
+.empty{text-align:center;color:var(--mute);padding:28px 8px}
+.set{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--mute);margin-top:6px}
+.set input{width:70px}
+#bk{margin-top:18px}#bk .row{margin-top:10px}#bk .btn{flex:1}.warn{color:var(--warn);font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>Caderno das abelhas</h1>
+  <p>Anote cada isca e veja quando é hora de mudar o enxame.</p>
+</header>
+<main>
+  <div id="form" class="card" hidden>
+    <label class="field"><span>Nome da isca</span><input id="fn" placeholder="Ex.: Isca 1, caixa do ipê"></label>
+    <label class="field"><span>Onde está colocada</span><input id="fl" placeholder="Ex.: fundo do sítio, árvore perto do açude"></label>
+    <div class="row"><button class="btn ghost" data-act="cancel">Cancelar</button><button class="btn" data-act="save">Salvar isca</button></div>
+  </div>
+  <button class="btn" id="add" data-act="new" style="width:100%;margin-bottom:14px">+ Nova isca</button>
+  <div id="list"></div>
+  <div class="set">Prazo de mudança: <input id="days" type="number" min="1" max="120"> dias depois do ninho formado</div>
+  <div id="bk" class="card">
+    <p class="name" style="font-size:18px">Backup</p>
+    <p class="sub" id="bkinfo"></p>
+    <div class="row"><button class="btn" data-act="export">Salvar backup</button><button class="btn ghost" data-act="import">Restaurar</button></div>
+    <input type="file" id="file" accept=".json,application/json" hidden>
+  </div>
+</main>
+<script>
+var KEY="abelhas-v1";
+var STEPS=[
+ {k:"isca",t:"Isca colocada",b:"Colocar a isca"},
+ {k:"enxame",t:"Enxame entrou",b:"Deu enxame"},
+ {k:"ninho",t:"Ninho formado",b:"Formou o ninho"},
+ {k:"mudanca",t:"Mudou para a caixa oficial",b:"Mudei de caixa"}
+];
+var S={days:21,boxes:[]};
+try{var r=localStorage.getItem(KEY);if(r){S=JSON.parse(r)}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function toD(s){var p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2])}
+function diff(a,b){return Math.round((toD(b)-toD(a))/864e5)}
+function fmt(s){var p=s.split("-");return p[2]+"/"+p[1]+"/"+p[0]}
+function addDays(s,n){var d=toD(s);d.setDate(d.getDate()+n);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function plural(n){return n+(Math.abs(n)===1?" dia":" dias")}
+function status(b){
+ var d=b.dates,t=today();
+ if(d.mudanca)return{badge:"Concluída",cls:"done",msg:"Mudou para a caixa oficial em "+fmt(d.mudanca)+". Do enxame até a mudança foram "+plural(diff(d.enxame||d.isca,d.mudanca))+"."};
+ if(d.ninho){var due=addDays(d.ninho,S.days),left=diff(t,due);
+  if(left>0)return{badge:"Ninho formado",cls:"",msg:"Mudar a partir de "+fmt(due)+" (faltam "+plural(left)+")."};
+  if(left===0)return{badge:"Hoje é o dia",cls:"late",msg:"Hoje é o dia de mudar para a caixa oficial."};
+  return{badge:"Hora de mudar",cls:"late",msg:"Passou do prazo de mudança ("+fmt(due)+"), há "+plural(-left)+"."}}
+ if(d.enxame)return{badge:"Enxame entrou",cls:"",msg:"Enxame há "+plural(diff(d.enxame,t))+". Falta anotar quando formar o ninho."};
+ if(d.isca)return{badge:"Isca esperando",cls:"",msg:"Isca colocada há "+plural(diff(d.isca,t))+". Falta o enxame entrar."};
+ return{badge:"Nova",cls:"",msg:"Anote o dia em que colocou a isca."}}
+function render(){
+ var h="";
+ if(!S.boxes.length)h='<div class="empty">Nenhuma isca ainda.<br>Toque em “Nova isca” para começar.</div>';
+ S.boxes.forEach(function(b){
+  var st=status(b),first=true;
+  h+='<div class="card"><div class="row"><div><p class="name">'+esc(b.name)+'</p><div class="sub">'+esc(b.local||"Local não informado")+'</div></div><span class="badge">'+st.badge+'</span></div>';
+  h+='<div class="alert '+st.cls+'">'+esc(st.msg)+'</div><ul class="steps">';
+  STEPS.forEach(function(s,i){
+   var v=b.dates[s.k],prev=i>0?STEPS[i-1].k:null,gap="";
+   if(v&&prev&&b.dates[prev])gap=" · "+plural(diff(b.dates[prev],v))+" depois de “"+STEPS[i-1].t.toLowerCase()+"”";
+   var canMark=!v&&(i===0||b.dates[prev]);
+   h+='<li class="'+(v?"on":"")+'"><span class="dot"></span><span class="lbl"><b>'+s.t+'</b>'+(v?'<small>'+fmt(v)+gap+'</small>':'')+'</span>';
+   if(v)h+='<input type="date" value="'+v+'" data-id="'+b.id+'" data-k="'+s.k+'" aria-label="Data: '+s.t+'">';
+   else if(canMark)h+='<button class="btn small" data-act="mark" data-id="'+b.id+'" data-k="'+s.k+'">'+s.b+' hoje</button>';
+   h+='</li>'});
+  h+='</ul><label class="field" style="margin-top:12px"><span>Anotações</span><textarea rows="2" data-id="'+b.id+'" data-note="1" placeholder="Ex.: cheiro de cera, abelhas rondando…">'+esc(b.note||"")+'</textarea></label>';
+  h+='<button class="btn ghost small" data-act="del" data-id="'+b.id+'">Apagar isca</button></div>'});
+ document.getElementById("list").innerHTML=h;
+ document.getElementById("days").value=S.days;
+ var i=document.getElementById("bkinfo"),w=false;
+ if(!S.lastBackup){i.textContent=S.boxes.length?"Você ainda não fez backup. Salve um arquivo e guarde no WhatsApp, e-mail ou Drive.":"Salve um arquivo com todas as iscas para não perder nada.";w=S.boxes.length>0}
+ else{var n=diff(S.lastBackup,today());i.textContent="Último backup: "+fmt(S.lastBackup)+(n>0?" (há "+plural(n)+")":" (hoje)");w=n>=7}
+ i.className="sub"+(w?" warn":"")}
+function markBackup(){S.lastBackup=today();save();render()}
+function exportBk(){
+ var data=JSON.stringify(S,null,1),name="abelhas-backup-"+today()+".json",file=null;
+ try{file=new File([data],name,{type:"application/json"})}catch(e){}
+ if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+  navigator.share({files:[file],title:"Backup das abelhas"}).then(markBackup).catch(function(){});return}
+ var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));
+ a.download=name;document.body.appendChild(a);a.click();a.remove();markBackup()}
+function importBk(f){
+ var r=new FileReader();
+ r.onload=function(){
+  try{var o=JSON.parse(r.result);if(!o||!Array.isArray(o.boxes))throw 0;
+   if(!confirm("Restaurar este backup? As iscas atuais serão substituídas por "+o.boxes.length+" do arquivo."))return;
+   S={days:o.days>0?o.days:21,boxes:o.boxes,lastBackup:o.lastBackup||null};save();render()}
+  catch(e){alert("Esse arquivo não parece ser um backup do Caderno das abelhas.")}};
+ r.readAsText(f)}
+function find(id){return S.boxes.filter(function(b){return b.id===id})[0]}
+document.addEventListener("click",function(e){
+ var el=e.target.closest("[data-act]");if(!el)return;
+ var a=el.dataset.act,id=el.dataset.id;
+ if(a==="new"){document.getElementById("form").hidden=false;document.getElementById("add").hidden=true;document.getElementById("fn").focus()}
+ if(a==="cancel"){document.getElementById("form").hidden=true;document.getElementById("add").hidden=false}
+ if(a==="save"){var n=document.getElementById("fn").value.trim();if(!n){document.getElementById("fn").focus();return}
+  S.boxes.unshift({id:"b"+Date.now(),name:n,local:document.getElementById("fl").value.trim(),dates:{},note:""});
+  document.getElementById("fn").value="";document.getElementById("fl").value="";
+  document.getElementById("form").hidden=true;document.getElementById("add").hidden=false;save();render()}
+ if(a==="export")exportBk();
+ if(a==="import")document.getElementById("file").click();
+ if(a==="mark"){find(id).dates[el.dataset.k]=today();save();render()}
+ if(a==="del"&&confirm("Apagar esta isca e todas as datas?")){S.boxes=S.boxes.filter(function(b){return b.id!==id});save();render()}
+});
+document.addEventListener("change",function(e){
+ var t=e.target;
+ if(t.id==="file"){if(t.files[0])importBk(t.files[0]);t.value="";return}
+ if(t.id==="days"){var n=parseInt(t.value,10);if(n>0){S.days=n;save();render()}return}
+ if(t.type==="date"&&t.dataset.id){if(t.value){find(t.dataset.id).dates[t.dataset.k]=t.value}else{delete find(t.dataset.id).dates[t.dataset.k]}save();render()}
+});
+document.addEventListener("input",function(e){
+ var t=e.target;if(t.dataset&&t.dataset.note){find(t.dataset.id).note=t.value;save()}
+});
+render();
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+</script>
+</body>
+</html>
