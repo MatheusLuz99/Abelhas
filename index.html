@@ -7,8 +7,8 @@
 <meta name="theme-color" content="#23402a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Abelhas">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/favicon-64.png">
 <title>Caderno das abelhas</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
@@ -18,6 +18,7 @@
 *,*:before,*:after{box-sizing:border-box}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Georgia,"Iowan Old Style",serif}
+.brand{display:flex;align-items:center;gap:12px}.brand img{width:48px;height:48px;border-radius:12px;flex:none}
 header{background:var(--head);color:var(--head-ink);padding:20px 16px 18px}
 h1{margin:0;font-size:26px;font-weight:700;letter-spacing:-.01em}
 header p{margin:4px 0 0;font:14px/1.4 system-ui,sans-serif;opacity:.8}
@@ -49,12 +50,23 @@ input,textarea{width:100%;border:1px solid var(--line);background:var(--bg);bord
 .empty{text-align:center;color:var(--mute);padding:28px 8px}
 .set{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--mute);margin-top:6px}
 .set input{width:70px}
-#bk{margin-top:18px}#bk .row{margin-top:10px}#bk .btn{flex:1}.warn{color:var(--warn);font-weight:600}
+#bk{margin-top:18px}#bk .row{margin-top:10px}#bk .btn{flex:1}.media{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.th{position:relative;aspect-ratio:1;border:0;padding:0;border-radius:10px;overflow:hidden;background:var(--bg);cursor:pointer}
+.th img,.th video{width:100%;height:100%;object-fit:cover;pointer-events:none;display:block}
+.th i{position:absolute;right:6px;bottom:6px;background:#000a;color:#fff;font-style:normal;font-size:12px;padding:2px 7px;border-radius:99px}
+#viewer{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+#viewer[hidden]{display:none}
+#vbody{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+#vbody img,#vbody video{max-width:100%;max-height:100%}
+#vbar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;color:#fff;font:14px system-ui,sans-serif}
+#vbar .btn.ghost{color:#fff;border-color:#fff6}
+.warn{color:var(--warn);font-weight:600}
 </style>
 </head>
 <body>
 <header>
-  <h1>Caderno das abelhas</h1>
+  <div class="brand"><img src="icons/icon-192.png" alt="" width="48" height="48"><h1>Caderno das abelhas</h1></div>
   <p>Anote cada isca e veja quando é hora de mudar o enxame.</p>
 </header>
 <main>
@@ -69,10 +81,13 @@ input,textarea{width:100%;border:1px solid var(--line);background:var(--bg);bord
   <div id="bk" class="card">
     <p class="name" style="font-size:18px">Backup</p>
     <p class="sub" id="bkinfo"></p>
+    <p class="sub">O backup guarda datas e anotações. Fotos e vídeos ficam só neste celular.</p>
     <div class="row"><button class="btn" data-act="export">Salvar backup</button><button class="btn ghost" data-act="import">Restaurar</button></div>
     <input type="file" id="file" accept=".json,application/json" hidden>
   </div>
 </main>
+<div id="viewer" hidden><div id="vbody"></div><div id="vbar"><button class="btn ghost small" data-act="vclose">Fechar</button><span id="vcap"></span><span><button class="btn ghost small" data-act="vshare" id="vshare">Compartilhar</button> <button class="btn ghost small" data-act="vdel">Apagar</button></span></div></div>
+<input type="file" id="mfile" accept="image/*,video/*" multiple hidden>
 <script>
 var KEY="abelhas-v1";
 var STEPS=[
@@ -116,7 +131,8 @@ function render(){
    if(v)h+='<input type="date" value="'+v+'" data-id="'+b.id+'" data-k="'+s.k+'" aria-label="Data: '+s.t+'">';
    else if(canMark)h+='<button class="btn small" data-act="mark" data-id="'+b.id+'" data-k="'+s.k+'">'+s.b+' hoje</button>';
    h+='</li>'});
-  h+='</ul><label class="field" style="margin-top:12px"><span>Anotações</span><textarea rows="2" data-id="'+b.id+'" data-note="1" placeholder="Ex.: cheiro de cera, abelhas rondando…">'+esc(b.note||"")+'</textarea></label>';
+  h+='</ul>'+mediaHtml(b.id);
+  h+='<label class="field" style="margin-top:12px"><span>Anotações</span><textarea rows="2" data-id="'+b.id+'" data-note="1" placeholder="Ex.: cheiro de cera, abelhas rondando…">'+esc(b.note||"")+'</textarea></label>';
   h+='<button class="btn ghost small" data-act="del" data-id="'+b.id+'">Apagar isca</button></div>'});
  document.getElementById("list").innerHTML=h;
  document.getElementById("days").value=S.days;
@@ -124,6 +140,39 @@ function render(){
  if(!S.lastBackup){i.textContent=S.boxes.length?"Você ainda não fez backup. Salve um arquivo e guarde no WhatsApp, e-mail ou Drive.":"Salve um arquivo com todas as iscas para não perder nada.";w=S.boxes.length>0}
  else{var n=diff(S.lastBackup,today());i.textContent="Último backup: "+fmt(S.lastBackup)+(n>0?" (há "+plural(n)+")":" (hoje)");w=n>=7}
  i.className="sub"+(w?" warn":"")}
+var DB=null,M=[],URLS={},pendingBox=null,curM=null;
+function openDB(cb){try{var r=indexedDB.open("abelhas-media",1);r.onupgradeneeded=function(){r.result.createObjectStore("m",{keyPath:"id"})};r.onsuccess=function(){DB=r.result;cb()};r.onerror=function(){cb()}}catch(e){cb()}}
+function loadMedia(cb){if(!DB){cb();return}try{var q=DB.transaction("m").objectStore("m").getAll();q.onsuccess=function(){M=q.result||[];cb()};q.onerror=function(){cb()}}catch(e){cb()}}
+function putMedia(m){return new Promise(function(res,rej){var t=DB.transaction("m","readwrite");t.objectStore("m").put(m);t.oncomplete=res;t.onerror=rej})}
+function delMedia(id){return new Promise(function(res){var t=DB.transaction("m","readwrite");t.objectStore("m").delete(id);t.oncomplete=res;t.onerror=res})}
+function murl(m){return URLS[m.id]||(URLS[m.id]=URL.createObjectURL(m.blob))}
+function mediaHtml(id){
+ var L=M.filter(function(m){return m.boxId===id}).sort(function(a,b){return b.id<a.id?-1:1}),g="";
+ L.forEach(function(m){g+='<button class="th" data-act="open" data-mid="'+m.id+'" aria-label="Abrir '+(m.type==="video"?"vídeo":"foto")+' de '+fmt(m.date)+'">'+(m.type==="video"?'<video src="'+murl(m)+'#t=0.1" preload="metadata" muted playsinline></video><i>▶ vídeo</i>':'<img src="'+murl(m)+'" alt="">')+'<i style="left:6px;right:auto">'+fmt(m.date).slice(0,5)+'</i></button>'});
+ return '<div class="media"><div class="mh"><b>Fotos e vídeos</b><button class="btn small" data-act="addmedia" data-id="'+id+'">+ Adicionar</button></div>'+(g?'<div class="grid">'+g+'</div>':'<div class="sub">Nenhuma foto ainda. Registre como está a isca.</div>')+'</div>'}
+function shrink(f){return new Promise(function(res){
+ var u=URL.createObjectURL(f),im=new Image();
+ im.onload=function(){var k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);
+  c.getContext("2d").drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);
+  c.toBlob(function(b){res(b||f)},"image/jpeg",0.85)};
+ im.onerror=function(){URL.revokeObjectURL(u);res(f)};im.src=u})}
+async function addFiles(boxId,files){
+ if(!DB){alert("Este navegador não permite guardar fotos e vídeos.");return}
+ var ok=0;
+ for(var i=0;i<files.length;i++){var f=files[i],isV=f.type.indexOf("video")===0;
+  try{var blob=isV?f:await shrink(f);
+   var m={id:"m"+Date.now()+"_"+i,boxId:boxId,type:isV?"video":"image",name:f.name,blob:blob,date:today()};
+   await putMedia(m);M.push(m);ok++}
+  catch(e){alert("Não consegui guardar “"+f.name+"”. O celular pode estar sem espaço.")}}
+ if(ok)render()}
+function openViewer(id){
+ var m=M.filter(function(x){return x.id===id})[0];if(!m)return;curM=m;
+ document.getElementById("vbody").innerHTML=m.type==="video"?'<video src="'+murl(m)+'" controls playsinline autoplay></video>':'<img src="'+murl(m)+'" alt="">';
+ document.getElementById("vcap").textContent=fmt(m.date);
+ var ok=false;try{ok=!!(navigator.canShare&&navigator.canShare({files:[new File([m.blob],m.name||"midia",{type:m.blob.type})]}))}catch(e){}
+ document.getElementById("vshare").hidden=!ok;
+ document.getElementById("viewer").hidden=false}
+function closeViewer(){document.getElementById("vbody").innerHTML="";document.getElementById("viewer").hidden=true;curM=null}
 function markBackup(){S.lastBackup=today();save();render()}
 function exportBk(){
  var data=JSON.stringify(S,null,1),name="abelhas-backup-"+today()+".json",file=null;
@@ -152,11 +201,17 @@ document.addEventListener("click",function(e){
   document.getElementById("form").hidden=true;document.getElementById("add").hidden=false;save();render()}
  if(a==="export")exportBk();
  if(a==="import")document.getElementById("file").click();
+ if(a==="addmedia"){pendingBox=id;document.getElementById("mfile").click()}
+ if(a==="open")openViewer(el.dataset.mid);
+ if(a==="vclose")closeViewer();
+ if(a==="vshare"&&curM){navigator.share({files:[new File([curM.blob],curM.name||"midia",{type:curM.blob.type})]}).catch(function(){})}
+ if(a==="vdel"&&curM&&confirm("Apagar esta foto/vídeo?")){var d=curM;closeViewer();delMedia(d.id).then(function(){M=M.filter(function(x){return x.id!==d.id});render()})}
  if(a==="mark"){find(id).dates[el.dataset.k]=today();save();render()}
- if(a==="del"&&confirm("Apagar esta isca e todas as datas?")){S.boxes=S.boxes.filter(function(b){return b.id!==id});save();render()}
+ if(a==="del"&&confirm("Apagar esta isca e todas as datas?")){S.boxes=S.boxes.filter(function(b){return b.id!==id});M.filter(function(m){return m.boxId===id}).forEach(function(m){delMedia(m.id)});M=M.filter(function(m){return m.boxId!==id});save();render()}
 });
 document.addEventListener("change",function(e){
  var t=e.target;
+ if(t.id==="mfile"){if(t.files.length&&pendingBox)addFiles(pendingBox,Array.prototype.slice.call(t.files));t.value="";return}
  if(t.id==="file"){if(t.files[0])importBk(t.files[0]);t.value="";return}
  if(t.id==="days"){var n=parseInt(t.value,10);if(n>0){S.days=n;save();render()}return}
  if(t.type==="date"&&t.dataset.id){if(t.value){find(t.dataset.id).dates[t.dataset.k]=t.value}else{delete find(t.dataset.id).dates[t.dataset.k]}save();render()}
@@ -165,6 +220,8 @@ document.addEventListener("input",function(e){
  var t=e.target;if(t.dataset&&t.dataset.note){find(t.dataset.id).note=t.value;save()}
 });
 render();
+openDB(function(){loadMedia(render)});
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
 </script>
 </body>
