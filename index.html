@@ -61,6 +61,13 @@ input,textarea{width:100%;border:1px solid var(--line);background:var(--bg);bord
 #vbody img,#vbody video{max-width:100%;max-height:100%}
 #vbar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;color:#fff;font:14px system-ui,sans-serif}
 #vbar .btn.ghost{color:#fff;border-color:#fff6}
+.sortbar{display:flex;gap:8px;align-items:center;margin:0 0 12px;font-size:14px;color:var(--mute)}
+.seg{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:8px 14px;min-height:36px;cursor:pointer}
+.seg[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.fh{display:flex;width:100%;align-items:center;gap:10px;background:none;border:0;padding:0;text-align:left;cursor:pointer;color:inherit;min-height:44px}
+.ft{flex:1;min-width:0}.ft .name,.ft .sub{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chev{transition:transform .15s;color:var(--mute)}.open .chev{transform:rotate(180deg)}
+.fb{margin-top:8px}.editbox{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
 .warn{color:var(--warn);font-weight:600}
 </style>
 </head>
@@ -76,6 +83,7 @@ input,textarea{width:100%;border:1px solid var(--line);background:var(--bg);bord
     <div class="row"><button class="btn ghost" data-act="cancel">Cancelar</button><button class="btn" data-act="save">Salvar isca</button></div>
   </div>
   <button class="btn" id="add" data-act="new" style="width:100%;margin-bottom:14px">+ Nova isca</button>
+  <div class="sortbar"><span>Ordenar:</span><button class="seg" data-act="sort" data-v="num">Número</button><button class="seg" data-act="sort" data-v="data">Criação</button></div>
   <div id="list"></div>
   <div class="set">Prazo de mudança: <input id="days" type="number" min="1" max="120"> dias depois do ninho formado</div>
   <div id="bk" class="card">
@@ -96,7 +104,7 @@ var STEPS=[
  {k:"ninho",t:"Ninho formado",b:"Formou o ninho"},
  {k:"mudanca",t:"Mudou para a caixa oficial",b:"Mudei de caixa"}
 ];
-var S={days:21,boxes:[]};
+var S={days:21,boxes:[]},OPEN={},EDIT=null;
 try{var r=localStorage.getItem(KEY);if(r){S=JSON.parse(r)}}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -116,16 +124,23 @@ function status(b){
  if(d.enxame)return{badge:"Enxame entrou",cls:"",msg:"Enxame há "+plural(diff(d.enxame,t))+". Falta anotar quando formar o ninho."};
  if(d.isca)return{badge:"Isca esperando",cls:"",msg:"Isca colocada há "+plural(diff(d.isca,t))+". Falta o enxame entrar."};
  return{badge:"Nova",cls:"",msg:"Anote o dia em que colocou a isca."}}
+function sorted(){var a=S.boxes.slice();
+ if(S.sort==="data")a.sort(function(x,y){return x.id.localeCompare(y.id,undefined,{numeric:true})});
+ else a.sort(function(x,y){return x.name.localeCompare(y.name,"pt-BR",{numeric:true,sensitivity:"base"})});
+ return a}
 function render(){
  var h="";
  if(!S.boxes.length)h='<div class="empty">Nenhuma isca ainda.<br>Toque em “Nova isca” para começar.</div>';
- S.boxes.forEach(function(b){
-  var st=status(b),first=true;
-  h+='<div class="card"><div class="row"><div><p class="name">'+esc(b.name)+'</p><div class="sub">'+esc(b.local||"Local não informado")+'</div></div><span class="badge">'+st.badge+'</span></div>';
+ sorted().forEach(function(b){
+  var st=status(b),first=true,op=!!OPEN[b.id];
+  h+='<div class="card'+(op?' open':'')+'"><button class="fh" data-act="toggle" data-id="'+b.id+'" aria-expanded="'+op+'"><span class="ft"><p class="name">'+esc(b.name)+'</p><div class="sub">'+esc(b.local||"Local não informado")+'</div></span><span class="badge">'+st.badge+'</span><span class="chev" aria-hidden="true">▾</span></button>';
+  if(op){h+='<div class="fb">';
+  if(EDIT===b.id)h+='<div class="editbox"><label class="field"><span>Nome da isca</span><input id="en" value="'+esc(b.name)+'"></label><label class="field"><span>Onde está colocada</span><input id="el" value="'+esc(b.local||"")+'"></label><div class="row"><button class="btn ghost small" data-act="ecancel">Cancelar</button><button class="btn small" data-act="esave" data-id="'+b.id+'">Salvar</button></div></div>';
+  else h+='<button class="btn ghost small" data-act="edit" data-id="'+b.id+'">✎ Editar nome e local</button>';
   h+='<div class="alert '+st.cls+'">'+esc(st.msg)+'</div><ul class="steps">';
   STEPS.forEach(function(s,i){
    var v=b.dates[s.k],prev=i>0?STEPS[i-1].k:null,gap="";
-   if(v&&prev&&b.dates[prev])gap=" · "+plural(diff(b.dates[prev],v))+" depois de “"+STEPS[i-1].t.toLowerCase()+"”";
+   if(v&&prev&&b.dates[prev]){var n2=diff(b.dates[prev],v),pl=STEPS[i-1].t.toLowerCase();gap=n2<0?" · ⚠ antes de “"+pl+"”":" · "+plural(n2)+" depois de “"+pl+"”"}
    var canMark=!v&&(i===0||b.dates[prev]);
    h+='<li class="'+(v?"on":"")+'"><span class="dot"></span><span class="lbl"><b>'+s.t+'</b>'+(v?'<small>'+fmt(v)+gap+'</small>':'')+'</span>';
    if(v)h+='<input type="date" value="'+v+'" data-id="'+b.id+'" data-k="'+s.k+'" aria-label="Data: '+s.t+'">';
@@ -133,9 +148,10 @@ function render(){
    h+='</li>'});
   h+='</ul>'+mediaHtml(b.id);
   h+='<label class="field" style="margin-top:12px"><span>Anotações</span><textarea rows="2" data-id="'+b.id+'" data-note="1" placeholder="Ex.: cheiro de cera, abelhas rondando…">'+esc(b.note||"")+'</textarea></label>';
-  h+='<button class="btn ghost small" data-act="del" data-id="'+b.id+'">Apagar isca</button></div>'});
+  h+='<button class="btn ghost small" data-act="del" data-id="'+b.id+'">Apagar isca</button></div>'}h+='</div>'});
  document.getElementById("list").innerHTML=h;
  document.getElementById("days").value=S.days;
+ Array.prototype.forEach.call(document.querySelectorAll(".seg"),function(x){x.setAttribute("aria-pressed",String(x.dataset.v===(S.sort==="data"?"data":"num")))});
  var i=document.getElementById("bkinfo"),w=false;
  if(!S.lastBackup){i.textContent=S.boxes.length?"Você ainda não fez backup. Salve um arquivo e guarde no WhatsApp, e-mail ou Drive.":"Salve um arquivo com todas as iscas para não perder nada.";w=S.boxes.length>0}
  else{var n=diff(S.lastBackup,today());i.textContent="Último backup: "+fmt(S.lastBackup)+(n>0?" (há "+plural(n)+")":" (hoje)");w=n>=7}
@@ -186,7 +202,7 @@ function importBk(f){
  r.onload=function(){
   try{var o=JSON.parse(r.result);if(!o||!Array.isArray(o.boxes))throw 0;
    if(!confirm("Restaurar este backup? As iscas atuais serão substituídas por "+o.boxes.length+" do arquivo."))return;
-   S={days:o.days>0?o.days:21,boxes:o.boxes,lastBackup:o.lastBackup||null};save();render()}
+   S={days:o.days>0?o.days:21,boxes:o.boxes,lastBackup:o.lastBackup||null,sort:o.sort||"num"};save();render()}
   catch(e){alert("Esse arquivo não parece ser um backup do Caderno das abelhas.")}};
  r.readAsText(f)}
 function find(id){return S.boxes.filter(function(b){return b.id===id})[0]}
@@ -196,9 +212,15 @@ document.addEventListener("click",function(e){
  if(a==="new"){document.getElementById("form").hidden=false;document.getElementById("add").hidden=true;document.getElementById("fn").focus()}
  if(a==="cancel"){document.getElementById("form").hidden=true;document.getElementById("add").hidden=false}
  if(a==="save"){var n=document.getElementById("fn").value.trim();if(!n){document.getElementById("fn").focus();return}
-  S.boxes.unshift({id:"b"+Date.now(),name:n,local:document.getElementById("fl").value.trim(),dates:{},note:""});
+  var nid="b"+Date.now();S.boxes.push({id:nid,name:n,local:document.getElementById("fl").value.trim(),dates:{},note:""});OPEN[nid]=true;
   document.getElementById("fn").value="";document.getElementById("fl").value="";
   document.getElementById("form").hidden=true;document.getElementById("add").hidden=false;save();render()}
+ if(a==="toggle"){OPEN[id]=!OPEN[id];if(!OPEN[id]&&EDIT===id)EDIT=null;render()}
+ if(a==="sort"){S.sort=el.dataset.v;save();render()}
+ if(a==="edit"){EDIT=id;render();var en=document.getElementById("en");if(en)en.focus()}
+ if(a==="ecancel"){EDIT=null;render()}
+ if(a==="esave"){var nn=document.getElementById("en").value.trim();if(!nn){document.getElementById("en").focus();return}
+  var bx=find(id);bx.name=nn;bx.local=document.getElementById("el").value.trim();EDIT=null;save();render()}
  if(a==="export")exportBk();
  if(a==="import")document.getElementById("file").click();
  if(a==="addmedia"){pendingBox=id;document.getElementById("mfile").click()}
